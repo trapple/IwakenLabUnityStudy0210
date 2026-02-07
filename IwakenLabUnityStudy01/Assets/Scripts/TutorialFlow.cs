@@ -21,7 +21,6 @@ namespace IwakenLabUnityStudy
 
         private WeaponDrawSequencer _ovrWeaponDraw;
         private BattleWeapon _battleWeaponInstance;
-        private IDisposable _drawSubscription;
         private IDisposable _startSubscription;
         private IDisposable _ballSpawnSubscription;
 
@@ -31,32 +30,29 @@ namespace IwakenLabUnityStudy
 
             _ovrWeaponDraw = new WeaponDrawSequencer(mouseInputObserver, drawWeapon);
 
-            _drawSubscription = _ovrWeaponDraw.OnDrawEnd.Subscribe(nodes =>
+            var nodes = await _ovrWeaponDraw.OnDrawEnd.FirstAsync(token);
+
+            text.text = "Spaceキーで剣を振ってぶった斬れ！";
+            drawWeapon.gameObject.SetActive(false);
+
+            _battleWeaponInstance = Instantiate(battleWeaponPrefab);
+            _battleWeaponInstance.Initialize(nodes);
+
+            // ボールを定期的に生成
+            StartBallSpawning();
+
+            _startSubscription?.Dispose();
+            _startSubscription = _battleWeaponInstance.OnHit.Subscribe(col =>
             {
-                _drawSubscription?.Dispose();
-
-                text.text = "Spaceキーで剣を振ってぶった斬れ！";
-                drawWeapon.gameObject.SetActive(false);
-
-                _battleWeaponInstance = Instantiate(battleWeaponPrefab);
-                _battleWeaponInstance.Initialize(nodes);
-
-                // ボールを定期的に生成
-                StartBallSpawning();
-
+                if (!col.gameObject.CompareTag("StartObject")) return;
+                _ballSpawnSubscription?.Dispose();
+                Destroy(_battleWeaponInstance.gameObject);
+                _ovrWeaponDraw?.Dispose();
+                _ovrWeaponDraw = null;
+                text.text = "チュートリアルクリア！";
+                Destroy(col.gameObject);
+                _finishTutorial.OnNext(Unit.Default);
                 _startSubscription?.Dispose();
-                _startSubscription = _battleWeaponInstance.OnHit.Subscribe(col =>
-                {
-                    if (!col.gameObject.CompareTag("StartObject")) return;
-                    _ballSpawnSubscription?.Dispose();
-                    Destroy(_battleWeaponInstance.gameObject);
-                    _ovrWeaponDraw?.Dispose();
-                    _ovrWeaponDraw = null;
-                    text.text = "チュートリアルクリア！";
-                    Destroy(col.gameObject);
-                    _finishTutorial.OnNext(Unit.Default);
-                    _startSubscription?.Dispose();
-                }).AddTo(this);
             }).AddTo(this);
 
             await _finishTutorial.FirstAsync(token);
