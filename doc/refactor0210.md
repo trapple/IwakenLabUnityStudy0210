@@ -8,3 +8,15 @@
 3. TutorialGameObjectをactive=falseにする
 
 💡 RxではなくTaskを使う
+
+## 2.TutorialFlow.RunTutorialAsyncを読みやすく
+
+上から下に処理を追えばよい形にする
+入れ子を減らす
+
+1. 剣を描けテキスト表示 
+2. 剣が描かれるのを待つ
+3. ぶった斬れテキスト表示
+4. ボール生成開始
+5. 剣でボールを切る
+6. 剣がボールにHitしたらチュートリアル終了

@@ -17,20 +17,16 @@ namespace IwakenLabUnityStudy
         [SerializeField] private float ballSpawnInterval = 6f;
         [SerializeField] private Vector3 ballSpawnPosition = new(0, 5, 0);
 
-        private readonly Subject<Unit> _finishTutorial = new();
-
-        private WeaponDrawSequencer _ovrWeaponDraw;
         private BattleWeapon _battleWeaponInstance;
-        private IDisposable _startSubscription;
         private IDisposable _ballSpawnSubscription;
 
         public async UniTask RunTutorialAsync(CancellationToken token)
         {
             text.text = "一筆書きで剣を描け！";
 
-            _ovrWeaponDraw = new WeaponDrawSequencer(mouseInputObserver, drawWeapon);
+            using var weaponDrawSequencer = new WeaponDrawSequencer(mouseInputObserver, drawWeapon);
 
-            var nodes = await _ovrWeaponDraw.OnDrawEnd.FirstAsync(token);
+            var nodes = await weaponDrawSequencer.OnDrawEnd.FirstAsync(token);
 
             text.text = "Spaceキーで剣を振ってぶった斬れ！";
             drawWeapon.gameObject.SetActive(false);
@@ -41,21 +37,14 @@ namespace IwakenLabUnityStudy
             // ボールを定期的に生成
             StartBallSpawning();
 
-            _startSubscription?.Dispose();
-            _startSubscription = _battleWeaponInstance.OnHit.Subscribe(col =>
-            {
-                if (!col.gameObject.CompareTag("StartObject")) return;
-                _ballSpawnSubscription?.Dispose();
-                Destroy(_battleWeaponInstance.gameObject);
-                _ovrWeaponDraw?.Dispose();
-                _ovrWeaponDraw = null;
-                text.text = "チュートリアルクリア！";
-                Destroy(col.gameObject);
-                _finishTutorial.OnNext(Unit.Default);
-                _startSubscription?.Dispose();
-            }).AddTo(this);
+            var col = await _battleWeaponInstance.OnHit
+                .Where(col => col.gameObject.CompareTag("StartObject"))
+                .FirstAsync(token);
 
-            await _finishTutorial.FirstAsync(token);
+            _ballSpawnSubscription?.Dispose();
+            Destroy(_battleWeaponInstance.gameObject);
+            text.text = "チュートリアルクリア！";
+            Destroy(col.gameObject);
         }
 
         private void StartBallSpawning()
