@@ -26,7 +26,7 @@ namespace IwakenLabUnityStudy
 
             using var weaponDrawSequencer = new WeaponDrawSequencer(mouseInputObserver, drawWeapon);
 
-            var nodes = await weaponDrawSequencer.OnDrawEnd.FirstAsync(token);
+            var nodes = await weaponDrawSequencer.WaitForDrawEndAsync(token);
 
             text.text = "Spaceキーで剣を振ってぶった斬れ！";
             drawWeapon.gameObject.SetActive(false);
