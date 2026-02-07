@@ -47,4 +47,6 @@
 - WeaponDrawSequencerでマウスが左クリック中にインスタンスが破棄されたら？
     - awaitが残り続ける
 - TutorialFlowで _battleWeaponInstance.OnHitを待ってる時にcancelが飛んできたら？
-    - _ballSpawnSubscription?.Dispose();が呼ばれず処理が走り続ける
+    - ボール生成処理がDisposeされずに走り続ける
+
+💡 using varを活用するとすっきり書けることも

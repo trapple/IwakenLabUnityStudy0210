@@ -37,7 +37,7 @@ namespace IwakenLabUnityStudy
             _battleWeaponInstance.Initialize(nodes);
 
             // ボールを定期的に生成
-            using var ballSpawning = StartBallSpawning();
+            using var ballSpawning = StartBallSpawning(_cts.Token);
 
             try
             {
@@ -50,22 +50,24 @@ namespace IwakenLabUnityStudy
             {
                 Destroy(_battleWeaponInstance.gameObject);
             }
+
             text.text = "チュートリアルクリア！";
+            _cts.Cancel();
         }
 
-        private IDisposable StartBallSpawning()
+        private IDisposable StartBallSpawning(CancellationToken token)
         {
             var disposable = Observable
                 .Interval(TimeSpan.FromSeconds(ballSpawnInterval))
-                .Subscribe(_ => SpawnBall())
+                .Subscribe(_ => SpawnBall(token).Forget())
                 .AddTo(this);
 
             // 最初のボールをすぐに生成
-            SpawnBall();
+            SpawnBall(token).Forget();
             return disposable;
         }
 
-        private void SpawnBall()
+        private async UniTask SpawnBall(CancellationToken token)
         {
             if (fallingBallPrefab == null) return;
 
@@ -73,7 +75,19 @@ namespace IwakenLabUnityStudy
             var spawnPos = ballSpawnPosition;
             spawnPos.x += UnityEngine.Random.Range(-3f, 3f);
 
-            Instantiate(fallingBallPrefab, spawnPos, Quaternion.identity);
+            var ball = Instantiate(fallingBallPrefab, spawnPos, Quaternion.identity);
+
+            try
+            {
+                await UniTask.Delay(TimeSpan.FromSeconds(ballSpawnInterval * 2), cancellationToken: token);
+            }
+            finally
+            {
+                if (ball != null)
+                {
+                    Destroy(ball.gameObject);
+                }
+            }
         }
 
         private void OnDestroy()
