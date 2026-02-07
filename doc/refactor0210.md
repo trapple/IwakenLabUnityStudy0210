@@ -34,3 +34,17 @@
   - new した瞬間に購読が始まると、テストでインスタンスを作るだけで副作用が発生する。
 - タイミングを制御出来ない
 - 失敗の制御がしづらい
+
+## 4.メモリーリークに注意
+
+非同期はメモリーリークしやすい
+
+- await中にインスタンスが破棄された
+- 処理がキャンセルされた
+
+例）コミットハッシュ 2b1e97e2c6de8dc9f53c9f153e6ca9591d81d695 のケース
+
+- WeaponDrawSequencerでマウスが左クリック中にインスタンスが破棄されたら？
+    - awaitが残り続ける
+- TutorialFlowで _battleWeaponInstance.OnHitを待ってる時にcancelが飛んできたら？
+    - _ballSpawnSubscription?.Dispose();が呼ばれず処理が走り続ける

@@ -50,6 +50,7 @@ namespace IwakenLabUnityStudy
             {
                 bounds.Encapsulate(node);
             }
+
             _pivotPoint = bounds.center;
 
             // LineRendererの設定
@@ -72,7 +73,7 @@ namespace IwakenLabUnityStudy
             }
 
             // 最大寸法を取得（X軸とY軸の大きい方）
-            float maxDimension = Mathf.Max(bounds.size.x, bounds.size.y);
+            var maxDimension = Mathf.Max(bounds.size.x, bounds.size.y);
 
             // スケールが小さすぎる場合は処理をスキップ
             if (maxDimension < 0.001f)
@@ -81,15 +82,15 @@ namespace IwakenLabUnityStudy
             }
 
             // スケール比率を計算
-            float scaleFactor = targetSize / maxDimension;
+            var scaleFactor = targetSize / maxDimension;
 
             // 中心点を基準にスケーリング
-            Vector3 center = bounds.center;
+            var center = bounds.center;
             var scaledNodes = new Vector3[nodes.Length];
 
-            for (int i = 0; i < nodes.Length; i++)
+            for (var i = 0; i < nodes.Length; i++)
             {
-                Vector3 offset = nodes[i] - center;
+                var offset = nodes[i] - center;
                 scaledNodes[i] = center + offset * scaleFactor;
             }
 
@@ -123,6 +124,7 @@ namespace IwakenLabUnityStudy
             {
                 bounds.Encapsulate(node);
             }
+
             transform.position = bounds.center;
 
             // コライダー用のコンテナを作成
@@ -131,7 +133,7 @@ namespace IwakenLabUnityStudy
             _colliderContainer.transform.localPosition = Vector3.zero;
 
             // 各セグメントにCapsuleColliderを配置
-            for (int i = 0; i < nodes.Length - 1; i++)
+            for (var i = 0; i < nodes.Length - 1; i++)
             {
                 CreateSegmentCollider(nodes[i], nodes[i + 1], i);
             }
@@ -198,12 +200,13 @@ namespace IwakenLabUnityStudy
                 {
                     _currentSwingAngle = 0f;
                 }
+
                 ApplySwingRotation();
             }
 
             // 十字キー/WASDで移動
-            float horizontal = 0f;
-            float vertical = 0f;
+            var horizontal = 0f;
+            var vertical = 0f;
 
             // WASD
             if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) horizontal -= 1f;
@@ -213,12 +216,12 @@ namespace IwakenLabUnityStudy
 
             if (horizontal == 0f && vertical == 0f) return;
 
-            Vector3 movement = new Vector3(horizontal, vertical, 0f) * (moveSpeed * Time.deltaTime);
+            var movement = new Vector3(horizontal, vertical, 0f) * (moveSpeed * Time.deltaTime);
             transform.Translate(movement, Space.World);
 
             // 基準ノードと中心点も移動
             _pivotPoint += movement;
-            for (int i = 0; i < _baseNodes.Length; i++)
+            for (var i = 0; i < _baseNodes.Length; i++)
             {
                 _baseNodes[i] += movement;
             }
@@ -226,10 +229,11 @@ namespace IwakenLabUnityStudy
             // LineRendererのノード位置も更新（useWorldSpace=trueのため）
             if (_nodes != null && lineRenderer != null)
             {
-                for (int i = 0; i < _nodes.Length; i++)
+                for (var i = 0; i < _nodes.Length; i++)
                 {
                     _nodes[i] += movement;
                 }
+
                 lineRenderer.SetPositions(_nodes);
             }
         }
@@ -242,12 +246,12 @@ namespace IwakenLabUnityStudy
             if (_baseNodes == null || lineRenderer == null) return;
 
             // Z軸周りの回転（反時計回り = 正の角度）
-            Quaternion rotation = Quaternion.Euler(0f, 0f, _currentSwingAngle);
+            var rotation = Quaternion.Euler(0f, 0f, _currentSwingAngle);
 
-            for (int i = 0; i < _baseNodes.Length; i++)
+            for (var i = 0; i < _baseNodes.Length; i++)
             {
-                Vector3 offset = _baseNodes[i] - _pivotPoint;
-                Vector3 rotatedOffset = rotation * offset;
+                var offset = _baseNodes[i] - _pivotPoint;
+                var rotatedOffset = rotation * offset;
                 _nodes[i] = _pivotPoint + rotatedOffset;
             }
 
@@ -264,7 +268,7 @@ namespace IwakenLabUnityStudy
         {
             if (_colliderContainer == null) return;
 
-            for (int i = 0; i < _nodes.Length - 1; i++)
+            for (var i = 0; i < _nodes.Length - 1; i++)
             {
                 var segmentTransform = _colliderContainer.transform.GetChild(i);
                 if (segmentTransform == null) continue;

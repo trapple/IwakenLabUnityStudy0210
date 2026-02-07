@@ -8,6 +8,7 @@ namespace IwakenLabUnityStudy
 {
     public class WeaponDrawSequencer : IDisposable
     {
+        private CancellationTokenSource _cts;
         private readonly MouseInputObserver _mouseInput;
         private readonly DrawWeapon _weapon;
 
@@ -19,12 +20,14 @@ namespace IwakenLabUnityStudy
 
         public async UniTask<Vector3[]> WaitForDrawEndAsync(CancellationToken cancellation)
         {
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+
             while (true)
             {
                 // マウス左クリックで描画
                 await _mouseInput.LeftClick
                     .Where(pressed => pressed)
-                    .FirstAsync(cancellation);
+                    .FirstAsync(_cts.Token);
 
                 var mousePosition = _mouseInput.MouseWorldPosition.CurrentValue;
                 _weapon.DrawStart(mousePosition);
@@ -39,7 +42,7 @@ namespace IwakenLabUnityStudy
 
                 await _mouseInput.LeftClick
                     .Where(pressed => !pressed)
-                    .FirstAsync(cancellation);
+                    .FirstAsync(_cts.Token);
 
                 var data = _weapon.DrawEnd();
                 if (data != null)
@@ -51,6 +54,8 @@ namespace IwakenLabUnityStudy
 
         public void Dispose()
         {
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 }

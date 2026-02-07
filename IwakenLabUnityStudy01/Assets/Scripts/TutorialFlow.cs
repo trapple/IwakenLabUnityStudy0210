@@ -17,16 +17,18 @@ namespace IwakenLabUnityStudy
         [SerializeField] private float ballSpawnInterval = 6f;
         [SerializeField] private Vector3 ballSpawnPosition = new(0, 5, 0);
 
+        private CancellationTokenSource _cts;
         private BattleWeapon _battleWeaponInstance;
-        private IDisposable _ballSpawnSubscription;
 
         public async UniTask RunTutorialAsync(CancellationToken token)
         {
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+
             text.text = "一筆書きで剣を描け！";
 
             using var weaponDrawSequencer = new WeaponDrawSequencer(mouseInputObserver, drawWeapon);
 
-            var nodes = await weaponDrawSequencer.WaitForDrawEndAsync(token);
+            var nodes = await weaponDrawSequencer.WaitForDrawEndAsync(_cts.Token);
 
             text.text = "Spaceキーで剣を振ってぶった斬れ！";
             drawWeapon.gameObject.SetActive(false);
@@ -35,28 +37,32 @@ namespace IwakenLabUnityStudy
             _battleWeaponInstance.Initialize(nodes);
 
             // ボールを定期的に生成
-            StartBallSpawning();
+            using var ballSpawning = StartBallSpawning();
 
-            var col = await _battleWeaponInstance.OnHit
-                .Where(col => col.gameObject.CompareTag("StartObject"))
-                .FirstAsync(token);
-
-            _ballSpawnSubscription?.Dispose();
-            Destroy(_battleWeaponInstance.gameObject);
+            try
+            {
+                var col = await _battleWeaponInstance.OnHit
+                    .Where(col => col.gameObject.CompareTag("StartObject"))
+                    .FirstAsync(_cts.Token);
+                Destroy(col.gameObject);
+            }
+            finally
+            {
+                Destroy(_battleWeaponInstance.gameObject);
+            }
             text.text = "チュートリアルクリア！";
-            Destroy(col.gameObject);
         }
 
-        private void StartBallSpawning()
+        private IDisposable StartBallSpawning()
         {
-            _ballSpawnSubscription?.Dispose();
-            _ballSpawnSubscription = Observable
+            var disposable = Observable
                 .Interval(TimeSpan.FromSeconds(ballSpawnInterval))
                 .Subscribe(_ => SpawnBall())
                 .AddTo(this);
 
             // 最初のボールをすぐに生成
             SpawnBall();
+            return disposable;
         }
 
         private void SpawnBall()
@@ -70,9 +76,14 @@ namespace IwakenLabUnityStudy
             Instantiate(fallingBallPrefab, spawnPos, Quaternion.identity);
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
-            _ballSpawnSubscription?.Dispose();
+            _cts.Cancel();
+            _cts.Dispose();
+            if (_battleWeaponInstance != null)
+            {
+                Destroy(_battleWeaponInstance.gameObject);
+            }
         }
     }
 }
