@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using R3;
 using UnityEngine;
 
@@ -6,50 +8,54 @@ namespace IwakenLabUnityStudy
 {
     public class WeaponDrawSequencer : IDisposable
     {
-        private readonly Subject<Vector3[]> _onDrawEnd = new();
-        public Observable<Vector3[]> OnDrawEnd => _onDrawEnd;
-        private IDisposable _touchSubscription;
-        private CompositeDisposable _compositeDisposable = new();
-        private bool _isDrawing;
+        private CancellationTokenSource _cts;
+        private readonly MouseInputObserver _mouseInput;
+        private readonly DrawWeapon _weapon;
 
         public WeaponDrawSequencer(MouseInputObserver mouseInput, DrawWeapon weapon)
         {
-            // マウス左クリックで描画
-            mouseInput.LeftClick.Subscribe(value =>
-            {
-                if (value)
-                {
-                    var mousePosition = mouseInput.MouseWorldPosition.CurrentValue;
-                    _isDrawing = weapon.DrawStart(mousePosition);
-                    if (_isDrawing)
-                    {
-                        _touchSubscription = Observable.EveryUpdate().Subscribe(_ =>
-                        {
-                            var deltaTime = Time.deltaTime;
-                            var pos = mouseInput.MouseWorldPosition.CurrentValue;
+            _mouseInput = mouseInput;
+            _weapon = weapon;
+        }
 
-                            weapon.Draw(pos, deltaTime);
-                        });
-                    }
-                }
-                else
+        public async UniTask<Vector3[]> WaitForDrawEndAsync(CancellationToken cancellation)
+        {
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+
+            while (true)
+            {
+                // マウス左クリックで描画
+                await _mouseInput.LeftClick
+                    .Where(pressed => pressed)
+                    .FirstAsync(_cts.Token);
+
+                var mousePosition = _mouseInput.MouseWorldPosition.CurrentValue;
+                _weapon.DrawStart(mousePosition);
+
+                using var drowSubscription = Observable.EveryUpdate().Subscribe(_ =>
                 {
-                    if (!_isDrawing) return;
-                    _isDrawing = false;
-                    _touchSubscription?.Dispose();
-                    var data = weapon.DrawEnd();
-                    if (data != null) _onDrawEnd.OnNext(data);
+                    var deltaTime = Time.deltaTime;
+                    var pos = _mouseInput.MouseWorldPosition.CurrentValue;
+
+                    _weapon.Draw(pos, deltaTime);
+                });
+
+                await _mouseInput.LeftClick
+                    .Where(pressed => !pressed)
+                    .FirstAsync(_cts.Token);
+
+                var data = _weapon.DrawEnd();
+                if (data != null)
+                {
+                    return data;
                 }
-            }).AddTo(_compositeDisposable);
+            }
         }
 
         public void Dispose()
         {
-            _touchSubscription?.Dispose();
-            _compositeDisposable?.Dispose();
-
-            _touchSubscription = null;
-            _compositeDisposable = null;
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 }

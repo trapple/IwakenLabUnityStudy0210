@@ -1,5 +1,4 @@
 using UnityEngine;
-using R3;
 
 namespace IwakenLabUnityStudy
 {
@@ -7,13 +6,11 @@ namespace IwakenLabUnityStudy
     {
         [SerializeField] private TutorialFlow tutorialFlow;
 
-        void OnEnable()
+        private async void OnEnable()
         {
-            tutorialFlow.FinishTutorial.Subscribe(_ =>
-            {
-                tutorialFlow.gameObject.SetActive(false);
-            });
             tutorialFlow.gameObject.SetActive(true);
+            await tutorialFlow.RunTutorialAsync(destroyCancellationToken);
+            tutorialFlow.gameObject.SetActive(false);
         }
     }
 }
